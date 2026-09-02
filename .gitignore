@@ -19,3 +19,7 @@ cert-manager-webhook-example
 bin
 _out
 _test
+
+# Temporary editor files
+*.bak
+*.swp
