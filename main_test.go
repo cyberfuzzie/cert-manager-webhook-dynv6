@@ -24,7 +24,7 @@ func TestRunsSuite(t *testing.T) {
 	solver := example.New("59351")
 	fixture := acmetest.NewFixture(solver,
 		acmetest.SetResolvedZone("example.com."),
-		acmetest.SetManifestPath("testdata/my-custom-solver"),
+		acmetest.SetManifestPath("testdata/dynv6"),
 		acmetest.SetDNSServer("127.0.0.1:59351"),
 		acmetest.SetUseAuthoritative(false),
 	)

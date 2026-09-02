@@ -8,14 +8,14 @@
 # The name will need to be referenced in each Issuer's `webhook` stanza to
 # inform cert-manager of where to send ChallengePayload resources in order to
 # solve the DNS01 challenge.
-groupName: acme.mycompany.com
+groupName: acme-dns.cyberfuzzie.dynv6.net
 
 certManager:
   namespace: cert-manager
   serviceAccountName: cert-manager
 
 image:
-  repository: mycompany/webhook-image
+  repository: cyberfuzzie/cert-manager-webhook-dynv6
   tag: latest
   pullPolicy: IfNotPresent
 
