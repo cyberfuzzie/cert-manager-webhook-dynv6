@@ -2,6 +2,15 @@ apiVersion: v1
 entries:
   cert-manager-webhook-dynv6:
   - apiVersion: v1
+    appVersion: 0.3.2
+    created: "2026-09-02T18:03:03.551890421Z"
+    description: A Helm chart for Kubernetes
+    digest: f8371de2160b34567297d3b889405a353c7f5dccd0792fc50e536d8274a9bac0
+    name: cert-manager-webhook-dynv6
+    urls:
+    - https://github.com/cyberfuzzie/cert-manager-webhook-dynv6/releases/download/cert-manager-webhook-dynv6-0.3.2/cert-manager-webhook-dynv6-0.3.2.tgz
+    version: 0.3.2
+  - apiVersion: v1
     appVersion: 0.3.1
     created: "2026-09-02T17:27:24.150139424Z"
     description: A Helm chart for Kubernetes
@@ -28,4 +37,4 @@ entries:
     urls:
     - https://github.com/cyberfuzzie/cert-manager-webhook-dynv6/releases/download/cert-manager-webhook-dynv6-0.2.0/cert-manager-webhook-dynv6-0.2.0.tgz
     version: 0.2.0
-generated: "2026-09-02T17:27:24.15015001Z"
+generated: "2026-09-02T18:03:03.551904031Z"
