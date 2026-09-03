@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	acmetest "github.com/cert-manager/cert-manager/test/acme"
-
-	"github.com/cert-manager/webhook-example/example"
 )
 
 func TestRunsSuite(t *testing.T) {
@@ -21,12 +19,9 @@ func TestRunsSuite(t *testing.T) {
 	//	acmetest.SetManifestPath("testdata/my-custom-solver"),
 	//	acmetest.SetBinariesPath("_test/kubebuilder/bin"),
 	//)
-	solver := example.New("59351")
-	fixture := acmetest.NewFixture(solver,
-		acmetest.SetResolvedZone("example.com."),
+	fixture := acmetest.NewFixture(&customDNSProviderSolver{},
+		acmetest.SetResolvedZone("dns-test.dynv6-webhook.dynv6.net."),
 		acmetest.SetManifestPath("testdata/dynv6"),
-		acmetest.SetDNSServer("127.0.0.1:59351"),
-		acmetest.SetUseAuthoritative(false),
 	)
 	//need to uncomment and  RunConformance delete runBasic and runExtended once https://github.com/cert-manager/cert-manager/pull/4835 is merged
 	//fixture.RunConformance(t)

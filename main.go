@@ -56,35 +56,27 @@ type Config struct {
 	apiKey string
 }
 
-type ZonesResponse struct {
-	Zones []Zone
-}
-
 type Zone struct {
-	id int64
-	name string
-	ipv4address string
-	ipv6prefix string
-	createdAt string
-	updatedAt string
-}
-
-type RecordsResponse struct {
-	Records []Record
+	Id          int64  `json:"id"`
+	Name        string `json:"name"`
+	Ipv4Address string `json:"ipv4address"`
+	Ipv6Prefix  string `json:"ipv6prefix"`
+	CreatedAt   string `json:"createdAt"`
+	UpdatedAt   string `json:"updatedAt"`
 }
 
 type Record struct {
-	id int64
-	zoneId int64
-	name string
-	Type string `json:"type"`
-	priority int
-	port int
-	weight int
-	flags int
-	tag string
-	data string
-	expandedData string
+	Id           int64  `json:"id"`
+	ZoneId       int64  `json:"zoneId"`
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	Priority     int    `json:"priority"`
+	Port         int    `json:"port"`
+	Weight       int    `json:"weight"`
+	Flags        int    `json:"flags"`
+	Tag          string `json:"tag"`
+	Data         string `json:"data"`
+	ExpandedData string `json:"expandedData"`
 }
 
 // customDNSProviderConfig is a structure that is used to decode into when
@@ -130,13 +122,14 @@ func (c *customDNSProviderSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Found zone %q with id %d\n", zone.Name, zone.Id)
 
-	name, found := strings.CutSuffix(ch.ResolvedFQDN, "." + zone.name)
+	name, found := strings.CutSuffix(ch.ResolvedFQDN, "." + zone.Name + ".")
 	if !found {
-		return fmt.Errorf("requested domain %q not in zone %q", ch.ResolvedFQDN, zone.name)
+		return fmt.Errorf("requested domain %q not in zone %q", ch.ResolvedFQDN, zone.Name)
 	}
 
-	setRecordErr := setRecord(cfg, name, ch.Key, zone.id)
+	setRecordErr := setRecord(cfg, name, ch.Key, zone.Id)
 
 	return setRecordErr
 }
@@ -157,13 +150,15 @@ func (c *customDNSProviderSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Found zone %q with id %d\n", zone.Name, zone.Id)
 
-	record, ok := findRecord(cfg, zone.id, ch.Key)
+	record, ok := findRecord(cfg, zone.Id, ch.Key)
 	if !ok {
-		return fmt.Errorf("No matching record found to cleanup")
+		// Nothing to do
+		return nil
 	}
 
-	delRecordErr := delRecord(cfg, zone.id, record.id)
+	delRecordErr := delRecord(cfg, zone.Id, record.Id)
 	return delRecordErr
 }
 
@@ -188,20 +183,24 @@ func (c *customDNSProviderSolver) Initialize(kubeClientConfig *rest.Config, stop
 }
 
 func (c *customDNSProviderSolver) init(cfgJSON *extapi.JSON, namespace string) (Config, error) {
+	fmt.Printf("Initializing solver\n")
 	var config Config
 	cfg, err := loadConfig(cfgJSON)
 	if err != nil {
 		return config, err
 	}
 
-	sec, err := c.client.CoreV1().Secrets(namespace).Get(context.TODO(), cfg.APIKeySecretRef.LocalObjectReference.Name, metav1.GetOptions{})
+	fmt.Printf("init: Config loaded\n")
+	fmt.Printf("init: Loading API key: %q/%q\n", cfg.APIKeySecretRef.Key, cfg.APIKeySecretRef.LocalObjectReference.Name)
+	sec, err := c.client.CoreV1().Secrets(namespace).Get(context.TODO(), cfg.APIKeySecretRef.Key, metav1.GetOptions{})
 	if err != nil {
 		return config, err
 	}
-	apiKey, ok := sec.Data["api-key"]
+	apiKey, ok := sec.Data[cfg.APIKeySecretRef.LocalObjectReference.Name]
 	if !ok {
 		return config, fmt.Errorf("api-key not found in secret data")
 	}
+	fmt.Printf("init: api key loaded\n")
 
 	config.apiKey = string(apiKey)
 	return config, nil
@@ -228,13 +227,18 @@ func getZone(config Config, fqdn string) (Zone, error) {
 		return Zone{}, err
 	}
 
-	var zones ZonesResponse
-	err = json.Unmarshal(result, &zones)
-	if err != nil {
-		return Zone{}, err
+	var zones []Zone
+	jsonErr := json.Unmarshal(result, &zones)
+	if jsonErr != nil {
+		return Zone{}, jsonErr
 	}
-	// TODO: support multiple zones
-	return zones.Zones[0], nil
+	fmt.Printf("Zones: %v\n", zones)
+	for _, zone := range zones {
+		if strings.HasSuffix(fqdn, "." + zone.Name + ".") {
+			return zone, nil
+		}
+	}
+	return Zone{}, fmt.Errorf("No zone found for fqdn %q", fqdn)
 }
 
 func findRecord(config Config, zoneId int64, content string) (Record, bool) {
@@ -243,30 +247,32 @@ func findRecord(config Config, zoneId int64, content string) (Record, bool) {
 		return Record{}, false
 	}
 
-	for _, record := range records.Records {
-		if record.data == content {
+	fmt.Printf("Records: %v\n", records)
+	for _, record := range records {
+		if record.Data == content {
 			return record, true
 		}
 	}
 	return Record{}, false
 }
 
-func getRecords(config Config, zoneId int64) (RecordsResponse, error) {
+func getRecords(config Config, zoneId int64) ([]Record, error) {
 	result, err := dynv6Rest(config, "GET", fmt.Sprintf("zones/%d/records", zoneId), "")
 	if err != nil {
-		return RecordsResponse{}, err
+		return nil, err
 	}
 
-	var records RecordsResponse
+	var records []Record
 	err = json.Unmarshal(result, &records)
 	if err != nil {
-		return RecordsResponse{}, err
+		return nil, err
 	}
 	return records, nil
 }
 
 func setRecord(config Config, name string, value string, zoneId int64) error {
-	data := fmt.Sprintf(`{"value":%q, "type":"TXT", "name":%q}`, value, name)
+	data := fmt.Sprintf(`{"data":%q, "type":"TXT", "name":%q}`, value, name)
+	fmt.Printf("Creating TXT record from json %q\n", data)
 	_, err := dynv6Rest(config, "POST", fmt.Sprintf("zones/%d/records", zoneId), data)
 	return err
 }
@@ -278,15 +284,21 @@ func delRecord(config Config, zoneId int64, recordId int64) error {
 
 func dynv6Rest(config Config, method string, ep string, data string) ([]byte, error) {
 	ctx := context.Background()
-	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("https://dynv6.com/api/v2/%q", ep), bytes.NewBuffer([]byte(data)))
+	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("https://dynv6.com/api/v2/%s", ep), bytes.NewBuffer([]byte(data)))
 	if err != nil {
 		return nil, fmt.Errorf("unable to execute request %v", err)
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %q", config.apiKey))
+	authHeader := fmt.Sprintf("Bearer %s", config.apiKey)
+	req.Header.Set("Authorization", authHeader)
+	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusNoContent {
+		return nil, nil
 	}
 
 	defer func() {
