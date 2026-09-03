@@ -1,6 +1,6 @@
 {
     "apiKeySecretRef": {
-	"key": "dynv6-api-key",
-	"name": "api-key"
+	"name": "dynv6-api-key",
+	"key": "api-key"
     }
 }

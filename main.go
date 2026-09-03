@@ -191,12 +191,12 @@ func (c *customDNSProviderSolver) init(cfgJSON *extapi.JSON, namespace string) (
 	}
 
 	fmt.Printf("init: Config loaded\n")
-	fmt.Printf("init: Loading API key: %q/%q\n", cfg.APIKeySecretRef.Key, cfg.APIKeySecretRef.LocalObjectReference.Name)
-	sec, err := c.client.CoreV1().Secrets(namespace).Get(context.TODO(), cfg.APIKeySecretRef.Key, metav1.GetOptions{})
+	fmt.Printf("init: Loading API key: %q/%q\n", cfg.APIKeySecretRef.LocalObjectReference.Name, cfg.APIKeySecretRef.Key)
+	sec, err := c.client.CoreV1().Secrets(namespace).Get(context.TODO(), cfg.APIKeySecretRef.LocalObjectReference.Name, metav1.GetOptions{})
 	if err != nil {
 		return config, err
 	}
-	apiKey, ok := sec.Data[cfg.APIKeySecretRef.LocalObjectReference.Name]
+	apiKey, ok := sec.Data[cfg.APIKeySecretRef.Key]
 	if !ok {
 		return config, fmt.Errorf("api-key not found in secret data")
 	}
